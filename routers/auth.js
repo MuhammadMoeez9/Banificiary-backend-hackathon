@@ -13,62 +13,107 @@ const router = express.Router();
 
 // Generate a Unique Token Function
 function generateToken() {
-    return crypto.randomInt(100000, 999999).toString(); // Generates a 6-digit random number
+  return crypto.randomInt(100000, 999999).toString(); // Generates a 6-digit random number
 }
 
 router.post('/register', async (req, res) => {
-    const { cnic, address, name, contact, purpose, department } = req.body;
+  const { cnic, address, name, contact, purpose, department } = req.body;
 
-    let uniquetoken = generateToken(); // Start with a generated token
+  let uniquetoken = generateToken();
 
-    // Check if the generated token already exists in the database
-    const userDetail = await User.findOne({ cnic });
-    const findToken = await User.findOne({ token: uniquetoken });
 
-    // If token exists, generate a new unique token
-    if (findToken) {
-        uniquetoken = generateToken();
-    }
+  const userDetail = await User.findOne({ cnic });
+  const findToken = await User.findOne({ token: uniquetoken });
 
-    // Create new user and save it
-    const newUser = new User({
-        name: name,
-        address: address,
-        contact: contact,
-        purpose: purpose,
-        cnic: cnic,
-        department: department,
-        token: uniquetoken
-    });
 
-    await newUser.save();
+  if (findToken) {
+    uniquetoken = generateToken();
+  }
 
-    console.log("New User Registered: ", newUser);
-    return sendResponse(res, 200, { newUser, userDetail }, 'User registered successfully');
+  const newUser = new User({
+    name: name,
+    address: address,
+    contact: contact,
+    purpose: purpose,
+    cnic: cnic,
+    department: department,
+    token: uniquetoken
+  });
+
+  await newUser.save();
+
+  console.log("New User Registered: ", newUser);
+  return sendResponse(res, 200, { newUser, userDetail }, 'User registered successfully');
 });
 
 
 
 router.get('/detailtoken', async (req, res) => {
-    try {
-      const { token } = req.query;  // Get the token from query parameters
-      if (!token) {
-        return sendResponse(res, 400, null, "Token is required");
-      }
-  
-      const tokenDetail = await User.findOne({ token });
-  
-      if (!tokenDetail) {
-        return sendResponse(res, 404, null, "Token not found");
-      }
-  
-      return sendResponse(res, 200, tokenDetail, "Successfully fetched token details");
-    } catch (error) {
-      console.error("Error in fetching token details:", error);
-      return sendResponse(res, 500, null, "An error occurred while fetching token details");
+  try {
+    const { token } = req.query;
+    if (!token) {
+      return sendResponse(res, 400, null, "Token is required");
     }
-  });
-  
+
+    const tokenDetail = await User.findOne({ token });
+
+    if (!tokenDetail) {
+      return sendResponse(res, 404, null, "Token not found");
+    }
+
+    return sendResponse(res, 200, tokenDetail, "Successfully fetched token details");
+  } catch (error) {
+    console.error("Error in fetching token details:", error);
+    return sendResponse(res, 500, null, "An error occurred while fetching token details");
+  }
+});
+
+router.put('/updatetoken', async (req, res) => {
+  try {
+    const { token } = req.query;
+    const status = "approve";
+
+    // Use findOneAndUpdate to update and return the updated document
+    const updatedUser = await User.updateOne({ token }, { $set: { status } })
+
+
+    return sendResponse(res, 200, updatedUser, "User updated successfully");
+
+
+  } catch (error) {
+    console.error("Error in updating token details:", error);
+    return sendResponse(res, 500, null, "An error occurred while updating token details");
+  }
+});
+
+
+
+
+
+router.delete('/deletetoken', async (req, res) => {
+
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({ message: 'Token is required' });
+    }
+
+    const deletedToken = await User.findOneAndDelete({ token: token });
+
+
+    if (!deletedToken) {
+      return sendResponse(res, 400, null, "Token not found")
+    }
+
+    return sendResponse(res, 200, null, "Token deleted successfully")
+
+  } catch (error) {
+    console.error('Error deleting token:', error);
+    sendResponse(res, 400, null, "An error occurred while deleting token details", error)
+    return
+  }
+});
 
 
 
